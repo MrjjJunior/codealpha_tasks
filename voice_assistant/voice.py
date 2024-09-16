@@ -1,62 +1,72 @@
 import speech_recognition as sr
 import pyttsx3
+import pywhatkit
 import datetime
-import requests
-import webbrowser
 import os
+import webbrowser
 
+# Initialize the speech engine
 engine = pyttsx3.init()
 
-def speak(text):
-    engine.say(text)
-    engine.runAndWait
+# Set voice properties (optional)
+voices = engine.getProperty('voices')
+engine.setProperty('voice', voices[0].id)  # Choose the voice [0] for male and [1] for female
 
-def listen():
-    recognizer = sr.Recognizer()
+def talk(text):
+    engine.say(text)
+    engine.runAndWait()
+
+def take_command():
+    listener = sr.Recognizer()
     with sr.Microphone() as source:
         print("Listening...")
-        sound = recognizer.listen(source)
+        listener.adjust_for_ambient_noise(source)
+        audio = listener.listen(source)
 
-        try:
-            text = recognizer.recognize_google(sound)
-            print("You said: " + text)
-            return text.lower()
-        
-        except sr.UnknownValueError:
-            speak("Sorry, I did not understand that.")
-            return None
-        
-        except sr.RequestError:
-            speak("Sorry, I could not connect to the service")
-            return None
-        
-        return text
+    try:
+        print("Recognizing...")
+        command = listener.recognize_google(audio)
+        command = command.lower()
+        print(f"User said: {command}")
+    except sr.UnknownValueError:
+        print("Sorry, I did not get that")
+        return None
+    except sr.RequestError:
+        print("Sorry, my speech service is down")
+        return None
 
-def perform_task(command):
-    task = listen()
+    return command
 
-    if task is None:
+def run_voice_assistant():
+    command = take_command()
+
+    if command is None:
         return
-
-    if 'time' in command:
-        now = datetime.datetime.now().strftime("%H:%M:%S")
-        speak(f"The time is {now}")
-
+    
+    if 'play' in command:
+        song = command.replace('play', '')
+        talk(f'Playing {song}')
+        pywhatkit.playonyt(song)
+    
+    elif 'time' in command:
+        time = datetime.datetime.now().strftime('%I:%M %p')
+        talk(f'The current time is {time}')
+    
     elif 'search' in command:
         query = command.replace('search', '')
-        speak(f"Searching {query}")
-        webbrowser.open(f"https://www.google.com/search?q={query}")
-
+        talk(f'Searching {query} on the web')
+        webbrowser.open(f'https://www.google.com/search?q={query}')
+    
     elif 'open' in command:
         if 'notepad' in command:
-            os.system("notepad.exe")
+            os.system('notepad.exe')
         elif 'calculator' in command:
             os.system('calc.exe')
 
     else:
-        speak("Sorry, I can not do that yet.")
+        talk("Sorry, I can't do that yet.")
 
 if __name__ == "__main__":
-    speak("How can I assit you?")
+    talk("How can I assist you?")
     while True:
-        perform_task()    
+        run_voice_assistant()
